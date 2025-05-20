@@ -1,0 +1,63 @@
+
+trigger:
+- main 
+
+variables:
+  azureServiceConnection: '<YOUR_AZURE_SERVICE_CONNECTION_NAME>'
+  resourceGroupName: '<YOUR_RESOURCE_GROUP_NAME>'
+  location: '<YOUR_AZURE_REGION>'
+  armTemplateFilePath: 'path/to/your/deployment.json'
+
+
+  frontendAppName: 'viktoriasecrets-frontend-ca'  
+  backendAppName: 'viktoriasecrets-backend-ca'    
+  idTag: 'ed038d8c-268c-47d2-89f7-acef1a377967'     
+  descriptionTag: 'Auto Generated Frontend + Backend Container Apps'  
+  frontendImage: 'cravajhubcoredev.azurecr.io/blazorappfe:latest'  
+  backendImage: 'cravajhubcoredev.azurecr.io/webapibe:latest'    
+  containerAppEnvironmentName: 'cae-viktoriasecrets-dev'  
+  logAnalyticsWorkspaceName: 'logs-cae-viktoriasecrets-dev'  
+  registryServer: 'cravajhubcoredev.azurecr.io' 
+  registryUsername: 'cravajhubcoredev'         
+  # Note: registryPassword is a securestring. It's best practice to store
+  # secrets in Azure Key Vault and retrieve them in the pipeline, or use
+  # Azure DevOps secret variables. Avoid hardcoding secrets here.
+  # For demonstration, we'll use a pipeline variable, but mark it as secret in ADO.
+  registryPassword: '$(RegistryPasswordSecret)' 
+
+
+pool:
+  vmImage: 'ubuntu-latest' # Use a suitable agent image
+
+stages:
+- stage: DeployARMTemplate
+  displayName: Deploy ARM Template
+  jobs:
+  - job: Deploy
+    displayName: Deploy to Azure
+    steps:
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: Deploy ARM Template
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: $(azureServiceConnection)
+        subscriptionId: $(azureServiceConnection) 
+        resourceGroupName: $(resourceGroupName)
+        location: $(location)
+        templateLocation: 'Linked artifact' 
+        csmFile: $(armTemplateFilePath)
+        overrideParameters: >
+          -frontendAppName "$(frontendAppName)"
+          -backendAppName "$(backendAppName)"
+          -location "$(location)"
+          -idTag "$(idTag)"
+          -descriptionTag "$(descriptionTag)"
+          -frontendImage "$(frontendImage)"
+          -backendImage "$(backendImage)"
+          -containerAppEnvironmentName "$(containerAppEnvironmentName)"
+          -logAnalyticsWorkspaceName "$(logAnalyticsWorkspaceName)"
+          -registryServer "$(registryServer)"
+          -registryUsername "$(registryUsername)"
+          -registryPassword "$(registryPassword)" # Pass the secret variable here
+        deploymentMode: 'Incremental' 
+
