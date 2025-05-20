@@ -6,19 +6,19 @@ variables:
   azureServiceConnection: '<YOUR_AZURE_SERVICE_CONNECTION_NAME>'
   resourceGroupName: '<YOUR_RESOURCE_GROUP_NAME>'
   location: '<YOUR_AZURE_REGION>'
-  armTemplateFilePath: 'path/to/your/deployment.json'
+  armTemplateFilePath: 'src/Infraestructure/deployment.json'
 
 
   frontendAppName: 'viktoriasecrets-frontend-ca'  
   backendAppName: 'viktoriasecrets-backend-ca'    
   idTag: 'ed038d8c-268c-47d2-89f7-acef1a377967'     
   descriptionTag: 'Auto Generated Frontend + Backend Container Apps'  
-  frontendImage: 'cravajhubcoredev.azurecr.io/blazorappfe:latest'  
-  backendImage: 'cravajhubcoredev.azurecr.io/webapibe:latest'    
+  frontendImage: '**.azurecr.io/blazorappfe:latest'  
+  backendImage: '**.azurecr.io/webapibe:latest'    
   containerAppEnvironmentName: 'cae-viktoriasecrets-dev'  
   logAnalyticsWorkspaceName: 'logs-cae-viktoriasecrets-dev'  
-  registryServer: 'cravajhubcoredev.azurecr.io' 
-  registryUsername: 'cravajhubcoredev'         
+  registryServer: '**.azurecr.io' 
+  registryUsername: '**'         
   # Note: registryPassword is a securestring. It's best practice to store
   # secrets in Azure Key Vault and retrieve them in the pipeline, or use
   # Azure DevOps secret variables. Avoid hardcoding secrets here.

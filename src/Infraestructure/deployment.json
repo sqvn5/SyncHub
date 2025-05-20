@@ -1,0 +1,257 @@
+{
+  "properties": {
+    "mode": "Incremental",
+    "template": {
+      "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "frontendAppName": {
+          "type": "string"
+        },
+        "backendAppName": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "idTag": {
+          "type": "string"
+        },
+        "descriptionTag": {
+          "type": "string"
+        },
+        "frontendImage": {
+          "type": "string"
+        },
+        "backendImage": {
+          "type": "string"
+        },
+        "containerAppEnvironmentName": {
+          "type": "string",
+          "defaultValue": "cae-blazor-dev"
+        },
+        "logAnalyticsWorkspaceName": {
+          "type": "string",
+          "defaultValue": "[concat('logs-', parameters('containerAppEnvironmentName'))]"
+        },
+        "registryServer": {
+          "type": "string"
+        },
+        "registryUsername": {
+          "type": "string"
+        },
+        "registryPassword": {
+          "type": "securestring",
+          "metadata": {
+            "description": "Password for container registry authentication"
+          }
+        }
+      },
+      "resources": [
+        {
+          "type": "Microsoft.OperationalInsights/workspaces",
+          "apiVersion": "2022-10-01",
+          "name": "[parameters('logAnalyticsWorkspaceName')]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "sku": {
+              "name": "PerGB2018"
+            },
+            "retentionInDays": 30
+          }
+        },
+        {
+          "type": "Microsoft.App/managedEnvironments",
+          "apiVersion": "2022-10-01",
+          "name": "[parameters('containerAppEnvironmentName')]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "appLogsConfiguration": {
+              "destination": "log-analytics",
+              "logAnalyticsConfiguration": {
+                "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2022-10-01').customerId]",
+                "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2022-10-01').primarySharedKey]"
+              }
+            }
+          },
+          "dependsOn": [
+            "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+          ]
+        },
+        {
+          "type": "Microsoft.App/containerApps",
+          "apiVersion": "2022-10-01",
+          "name": "[parameters('frontendAppName')]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvironmentName'))]",
+            "configuration": {
+              "ingress": {
+                "external": true,
+                "targetPort": 8080,
+                "allowInsecure": false,
+                "traffic": [
+                  {
+                    "latestRevision": true,
+                    "weight": 100
+                  }
+                ]
+              },
+              "registries": [
+                {
+                  "server": "[parameters('registryServer')]",
+                  "username": "[parameters('registryUsername')]",
+                  "passwordSecretRef": "registry-password"
+                }
+              ],
+              "secrets": [
+                {
+                  "name": "registry-password",
+                  "value": "[parameters('registryPassword')]"
+                }
+              ]
+            },
+            "template": {
+              "containers": [
+                {
+                  "name": "[parameters('frontendAppName')]",
+                  "image": "[parameters('frontendImage')]",
+                  "env": [
+                    {
+                      "name": "ASPNETCORE_URLS",
+                      "value": "http://+:8080"
+                    },
+                    {
+                      "name": "ASPNETCORE_ENVIRONMENT",
+                      "value": "Production"
+                    },
+                    {
+                      "name": "BACKEND_API_URL",
+                      "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', parameters('backendAppName')), '2022-10-01').latestRevisionFqdn)]"
+                    }
+                  ]
+                }
+              ],
+              "scale": {
+                "minReplicas": 1,
+                "maxReplicas": 1
+              }
+            }
+          },
+          "dependsOn": [
+            "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvironmentName'))]"
+          ],
+          "tags": {
+            "id": "[parameters('idTag')]",
+            "description": "[parameters('descriptionTag')]"
+          }
+        },
+        {
+          "type": "Microsoft.App/containerApps",
+          "apiVersion": "2022-10-01",
+          "name": "[parameters('backendAppName')]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvironmentName'))]",
+            "configuration": {
+              "ingress": {
+                "external": false,
+                "targetPort": 8080,
+                "traffic": [
+                  {
+                    "latestRevision": true,
+                    "weight": 100
+                  }
+                ]
+              },
+              "registries": [
+                {
+                  "server": "[parameters('registryServer')]",
+                  "username": "[parameters('registryUsername')]",
+                  "passwordSecretRef": "registry-password"
+                }
+              ],
+              "secrets": [
+                {
+                  "name": "registry-password",
+                  "value": "[parameters('registryPassword')]"
+                }
+              ]
+            },
+            "template": {
+              "containers": [
+                {
+                  "name": "[parameters('backendAppName')]",
+                  "image": "[parameters('backendImage')]",
+                  "resources": {
+                    "cpu": 0.5,
+                    "memory": "1Gi"
+                  },
+                  "env": [
+                    {
+                      "name": "ASPNETCORE_URLS",
+                      "value": "http://+:8080"
+                    },
+                    {
+                      "name": "ASPNETCORE_ENVIRONMENT",
+                      "value": "Production"
+                    }
+                  ]
+                }
+              ],
+              "scale": {
+                "minReplicas": 1,
+                "maxReplicas": 1
+              }
+            }
+          },
+          "dependsOn": [
+            "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppEnvironmentName'))]"
+          ],
+          "tags": {
+            "id": "[parameters('idTag')]",
+            "description": "[parameters('descriptionTag')]"
+          }
+        }
+      ]
+    },
+    "parameters": {
+      "frontendAppName": {
+        "value": "viktoriasecrets-frontend-ca"
+      },
+      "backendAppName": {
+        "value": "viktoriasecrets-backend-ca"
+      },
+      "location": {
+        "value": "westeurope"
+      },
+      "idTag": {
+        "value": "ed038d8c-268c-47d2-89f7-acef1a377967"
+      },
+      "descriptionTag": {
+        "value": "Auto Generated Frontend + Backend Container Apps"
+      },
+      "frontendImage": {
+        "value": "**.azurecr.io/blazorappfe:latest"
+      },
+      "backendImage": {
+        "value": "**.azurecr.io/webapibe:latest"
+      },
+      "containerAppEnvironmentName": {
+        "value": "cae-viktoriasecrets-dev"
+      },
+      "logAnalyticsWorkspaceName": {
+        "value": "logs-cae-viktoriasecrets-dev"
+      },
+      "registryServer": {
+        "value": "cravajhubcoredev.azurecr.io"
+      },
+      "registryUsername": {
+        "value": "cravajhubcoredev"
+      },
+      "registryPassword": {
+        "value": ""
+      }
+    }
+  }
+}
