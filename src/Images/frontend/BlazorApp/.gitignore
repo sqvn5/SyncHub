@@ -1,0 +1,47 @@
+# Build output
+bin/
+obj/
+out/
+publish/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio
+.vs/
+
+# VS Code
+.vscode/
+
+# ASP.NET Secrets
+secrets.json
+
+# DotNet artifacts
+*.dbmdl
+*.log
+*.pdb
+*.cache
+*.nupkg
+
+# Docker
+**/Dockerfile.*
+docker-compose*
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Rider/JetBrains
+.idea/
+*.sln.iml
+
+# Optional: Node artifacts if using JS interop
+node_modules/
+npm-debug.log
+yarn-error.log

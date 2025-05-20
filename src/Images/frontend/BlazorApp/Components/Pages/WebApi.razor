@@ -1,0 +1,78 @@
+﻿@page "/webapi"
+@using System.Text.Json
+
+<PageTitle>WebApi Data</PageTitle>
+
+<h1>WebApi Data</h1>
+
+@if (string.IsNullOrEmpty(errorMessage))
+{
+    @if (apiResponse != null)
+    {
+        <p><strong>Message from API:</strong> @apiResponse.Message</p>
+        <p><strong>API Timestamp (UTC):</strong> @apiResponse.Timestamp.ToLocalTime()</p>
+    }
+    else
+    {
+        <p><em>Loading data from API...</em></p>
+    }
+}
+else
+{
+    <p style="color: red;"><strong>Error:</strong> @errorMessage</p>
+}
+
+
+@inject IHttpClientFactory HttpClientFactory
+
+@code {
+    private ResponseModel? apiResponse; // Store the whole response
+    private string? message; // You were using this, it's fine too.
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var client = HttpClientFactory.CreateClient("BackendApi");
+        try
+        {
+            var result = await client.GetFromJsonAsync<ResponseModel>("api/example");
+
+            if (result != null)
+            {
+                apiResponse = result;
+                message = result.Message;
+            }
+            else
+            {
+                errorMessage = "No data received from API.";
+            }
+        }
+        catch (System.Net.Http.HttpRequestException ex)
+        {
+            // Handle network errors (e.g., API not running, DNS issues)
+            errorMessage = $"Network error: {ex.Message}";
+            // More specific error for CORS issues (often manifests as a network error in Blazor WASM or a generic failed fetch)
+            if (ex.Message.Contains("Failed to fetch") || ex.Message.Contains("CORS"))
+            {
+                errorMessage += " (This might be a CORS issue. Ensure the API server at http://localhost:5011 is running and has CORS configured correctly for your Blazor app's origin.)";
+            }
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            // Handle errors in deserializing the JSON response
+            errorMessage = $"JSON deserialization error: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            // Handle other unexpected errors
+            errorMessage = $"An unexpected error occurred: {ex.Message}";
+        }
+    }
+
+    // The ResponseModel matches the anonymous type returned by your API
+    public class ResponseModel
+    {
+        public string? Message { get; set; }
+        public DateTime Timestamp { get; set; }
+    }
+}
